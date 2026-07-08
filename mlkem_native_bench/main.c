@@ -1,8 +1,5 @@
 /*
- * Benchmark harness for mlkem-native ML-KEM
- * Loops keygen / encaps / decaps N times, records per-call timing via
- * clock_gettime(CLOCK_MONOTONIC), and reports mean/median/stddev/min/max
- * in microseconds. Also writes raw samples to a CSV for later plotting.
+ * Benchmark harness for mlkem-native ML-KEM (Keygen Only)
  */
 #define _POSIX_C_SOURCE 199309L
 #include <stdio.h>
@@ -66,14 +63,9 @@ static void report(const char *label, double *samples, int n, FILE *csv) {
 int main(void) {
     uint8_t pk[CRYPTO_PUBLICKEYBYTES];
     uint8_t sk[CRYPTO_SECRETKEYBYTES];
-    uint8_t ct[CRYPTO_CIPHERTEXTBYTES];
-    uint8_t key_a[CRYPTO_BYTES];
-    uint8_t key_b[CRYPTO_BYTES];
     int i;
 
     double *keygen_t = malloc(NUM_ITERS * sizeof(double));
-    double *enc_t     = malloc(NUM_ITERS * sizeof(double));
-    double *dec_t     = malloc(NUM_ITERS * sizeof(double));
 
     FILE *csv = fopen("results_mlkem_native.csv", "w");
     fprintf(csv, "library,operation,iter,microseconds\n");
@@ -83,8 +75,6 @@ int main(void) {
     /* Warm-up (not recorded) */
     for (i = 0; i < WARMUP_ITERS; i++) {
         crypto_kem_keypair(pk, sk);
-        crypto_kem_enc(ct, key_b, pk);
-        crypto_kem_dec(key_a, ct, sk);
     }
 
     /* Keygen */
@@ -94,29 +84,11 @@ int main(void) {
         keygen_t[i] = now_us() - t0;
     }
 
-    /* Encaps (reuse last generated pk) */
-    for (i = 0; i < NUM_ITERS; i++) {
-        double t0 = now_us();
-        crypto_kem_enc(ct, key_b, pk);
-        enc_t[i] = now_us() - t0;
-    }
-
-    /* Decaps */
-    for (i = 0; i < NUM_ITERS; i++) {
-        double t0 = now_us();
-        crypto_kem_dec(key_a, ct, sk);
-        dec_t[i] = now_us() - t0;
-    }
-
-    printf("=== mlkem-native ML-KEM-%d  (N=%d, warmup=%d) ===\n",
+    printf("=== mlkem-native ML-KEM-%d (Keygen Only) (N=%d, warmup=%d) ===\n",
            MLK_CONFIG_PARAMETER_SET, NUM_ITERS, WARMUP_ITERS);
     report("keygen", keygen_t, NUM_ITERS, csv);
-    report("encaps", enc_t, NUM_ITERS, csv);
-    report("decaps", dec_t, NUM_ITERS, csv);
 
     fclose(csv);
     free(keygen_t);
-    free(enc_t);
-    free(dec_t);
     return 0;
 }

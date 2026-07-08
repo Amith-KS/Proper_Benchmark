@@ -1,8 +1,5 @@
 /*
- * Benchmark harness for PQClean ML-KEM-512 ("clean" reference implementation)
- * Mirrors the mlkem-native benchmark harness exactly: same loop count,
- * same timer (clock_gettime/CLOCK_MONOTONIC), same statistics, same CSV
- * schema -- so the two result sets can be directly compared/plotted together.
+ * Benchmark harness for PQClean ML-KEM-512 (Keygen Only)
  */
 #define _POSIX_C_SOURCE 199309L
 #include <stdio.h>
@@ -65,14 +62,9 @@ static void report(const char *label, double *samples, int n, FILE *csv) {
 int main(void) {
     uint8_t pk[PQCLEAN_MLKEM512_CLEAN_CRYPTO_PUBLICKEYBYTES];
     uint8_t sk[PQCLEAN_MLKEM512_CLEAN_CRYPTO_SECRETKEYBYTES];
-    uint8_t ct[PQCLEAN_MLKEM512_CLEAN_CRYPTO_CIPHERTEXTBYTES];
-    uint8_t key_a[PQCLEAN_MLKEM512_CLEAN_CRYPTO_BYTES];
-    uint8_t key_b[PQCLEAN_MLKEM512_CLEAN_CRYPTO_BYTES];
     int i;
 
     double *keygen_t = malloc(NUM_ITERS * sizeof(double));
-    double *enc_t     = malloc(NUM_ITERS * sizeof(double));
-    double *dec_t     = malloc(NUM_ITERS * sizeof(double));
 
     FILE *csv = fopen("results_pqclean.csv", "w");
     fprintf(csv, "library,operation,iter,microseconds\n");
@@ -80,8 +72,6 @@ int main(void) {
     /* Warm-up (not recorded) */
     for (i = 0; i < WARMUP_ITERS; i++) {
         PQCLEAN_MLKEM512_CLEAN_crypto_kem_keypair(pk, sk);
-        PQCLEAN_MLKEM512_CLEAN_crypto_kem_enc(ct, key_b, pk);
-        PQCLEAN_MLKEM512_CLEAN_crypto_kem_dec(key_a, ct, sk);
     }
 
     /* Keygen */
@@ -91,29 +81,11 @@ int main(void) {
         keygen_t[i] = now_us() - t0;
     }
 
-    /* Encaps (reuse last generated pk) */
-    for (i = 0; i < NUM_ITERS; i++) {
-        double t0 = now_us();
-        PQCLEAN_MLKEM512_CLEAN_crypto_kem_enc(ct, key_b, pk);
-        enc_t[i] = now_us() - t0;
-    }
-
-    /* Decaps */
-    for (i = 0; i < NUM_ITERS; i++) {
-        double t0 = now_us();
-        PQCLEAN_MLKEM512_CLEAN_crypto_kem_dec(key_a, ct, sk);
-        dec_t[i] = now_us() - t0;
-    }
-
-    printf("=== PQClean ML-KEM-512 (clean)  (N=%d, warmup=%d) ===\n",
+    printf("=== PQClean ML-KEM-512 (Keygen Only) (N=%d, warmup=%d) ===\n",
            NUM_ITERS, WARMUP_ITERS);
     report("keygen", keygen_t, NUM_ITERS, csv);
-    report("encaps", enc_t, NUM_ITERS, csv);
-    report("decaps", dec_t, NUM_ITERS, csv);
 
     fclose(csv);
     free(keygen_t);
-    free(enc_t);
-    free(dec_t);
     return 0;
 }
