@@ -1,6 +1,6 @@
 # Benchmark build for mlkem-native (ML-KEM-512)
 CC ?= gcc
-CFLAGS := -O3 -std=c99 -Wall -I mlkem_native -DMLK_CONFIG_PARAMETER_SET=512 -DMLK_CONFIG_NAMESPACE_PREFIX=mlkem
+CFLAGS := -O3 -std=c99 -Wall -I mlkem_native -DMLK_CONFIG_PARAMETER_SET=512 -DMLK_CONFIG_NAMESPACE_PREFIX=mlkem # -DMLK_CONFIG_USE_NATIVE_BACKEND_ARITH
 LDFLAGS := -lm
 
 MLK_SOURCE=$(wildcard \
