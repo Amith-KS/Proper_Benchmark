@@ -1,5 +1,5 @@
 /*
- * Benchmark harness for PQClean ML-KEM-512 (Keygen Only)
+ * Benchmark harness for PQClean ML-KEM-512 (Keygen Only) - Deterministic RNG
  */
 #define _POSIX_C_SOURCE 199309L
 #include <stdio.h>
@@ -9,6 +9,7 @@
 #include <math.h>
 
 #include "api.h"
+#include "test_only_rng/notrandombytes.h" // Added for deterministic benchmarking
 
 #ifndef NUM_ITERS
 #define NUM_ITERS 5000
@@ -69,6 +70,9 @@ int main(void) {
     FILE *csv = fopen("results_pqclean.csv", "w");
     fprintf(csv, "library,operation,iter,microseconds\n");
 
+    // Reset the fake RNG state right before the crypto execution starts
+    randombytes_reset();
+
     /* Warm-up (not recorded) */
     for (i = 0; i < WARMUP_ITERS; i++) {
         PQCLEAN_MLKEM512_CLEAN_crypto_kem_keypair(pk, sk);
@@ -87,5 +91,11 @@ int main(void) {
 
     fclose(csv);
     free(keygen_t);
+    return 0;
+}
+
+/* Bridge wrapper to connect PQClean's namespace to the fake RNG */
+int PQCLEAN_randombytes(uint8_t *out, size_t outlen) {
+    randombytes(out, outlen);
     return 0;
 }
