@@ -7,16 +7,25 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
+#include <sys/random.h>
+#include <errno.h>
+
 
 #include "mlkem_native/mlkem_native.h"
-#include "test_only_rng/notrandombytes.h"
 
 #ifndef NUM_ITERS
-#define NUM_ITERS 5000
+#define NUM_ITERS 50000
 #endif
 #ifndef WARMUP_ITERS
 #define WARMUP_ITERS 100
 #endif
+#ifndef LIB_NAME
+#define LIB_NAME "mlkem-native"
+#endif
+#ifndef OUT_FILE
+#define OUT_FILE "results_mlkem_native.csv"
+#endif
+
 
 static double now_us(void) {
     struct timespec ts;
@@ -27,6 +36,21 @@ static double now_us(void) {
 static int cmp_double(const void *a, const void *b) {
     double da = *(const double *)a, db = *(const double *)b;
     return (da > db) - (da < db);
+}
+
+int randombytes(uint8_t *out, size_t outlen) {
+    size_t total_read = 0;
+    while (total_read < outlen) {
+        ssize_t res = getrandom(out + total_read, outlen - total_read, 0);
+        if (res < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            return -1; 
+        }
+        total_read += res;
+    }
+    return 0;
 }
 
 static void report(const char *label, double *samples, int n, FILE *csv) {
@@ -54,7 +78,7 @@ static void report(const char *label, double *samples, int n, FILE *csv) {
            label, mean, median, stddev, min, max, p99);
 
     for (i = 0; i < n; i++) {
-        fprintf(csv, "mlkem-native,%s,%d,%.4f\n", label, i, samples[i]);
+	fprintf(csv, "%s,%s,%d,%.4f\n", LIB_NAME, label, i, samples[i]);        
     }
 
     free(sorted);
@@ -67,10 +91,8 @@ int main(void) {
 
     double *keygen_t = malloc(NUM_ITERS * sizeof(double));
 
-    FILE *csv = fopen("results_mlkem_native.csv", "w");
+    FILE *csv = fopen(OUT_FILE, "w");
     fprintf(csv, "library,operation,iter,microseconds\n");
-
-    randombytes_reset();
 
     /* Warm-up (not recorded) */
     for (i = 0; i < WARMUP_ITERS; i++) {
